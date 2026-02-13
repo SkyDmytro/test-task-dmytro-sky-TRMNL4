@@ -3,15 +3,17 @@ Build a minimal internal tool for managing startup acceleration programs.
 You need to create a system where admins can review application submitted by founders.
 
 ## Tech Requirements:
+
 To align with our stack, you must use:
 
 1. SvelteKit (svelte 5, svelte 5 synthax is required)
 2. Any SQL database of you preference (we use MySQL) and Kysely as ORM (required)
 3. Typescript for end to end type safety
 4. Styling: we use tailwinnd css and shadcn-svelte, but you can pick any UI technology you choose
-5. You can use docker, but this is not required 
+5. You can use docker, but this is not required
 
-## Database 
+## Database
+
 Your database must have following entities (note, you can add any additional columns you think are needed):
 
 ```prisma
@@ -39,7 +41,7 @@ note: for simplification you don't need to add any authorization and users table
    This page must have a `select` with all the program `options` admins can choose from.
    This page must show applications for a selected program. Admins must be able to view each applications and change their status.
 
-3. Each application must be sharable via a link. 
+3. Each application must be sharable via a link.
 
 ## Documentation.
 
