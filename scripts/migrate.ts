@@ -1,22 +1,18 @@
+import 'dotenv/config';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { promises as fs } from 'fs';
 import { createPool } from 'mysql2';
 import { Kysely, Migrator, MysqlDialect, FileMigrationProvider } from 'kysely';
 import type { Database } from '../src/lib/db/types.js';
+import { createDbConfig } from '../src/lib/db/config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 async function migrateToLatest() {
 	const db = new Kysely<Database>({
 		dialect: new MysqlDialect({
-			pool: createPool({
-				host: process.env.DB_HOST ?? 'localhost',
-				port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
-				database: process.env.DB_NAME ?? 'app',
-				user: process.env.DB_USER,
-				password: process.env.DB_PASSWORD
-			})
+			pool: createPool(createDbConfig(process.env))
 		})
 	});
 
