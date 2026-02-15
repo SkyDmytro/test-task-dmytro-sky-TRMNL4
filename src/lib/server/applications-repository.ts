@@ -21,9 +21,26 @@ export interface ApplicationDetailItem extends ApplicationListItem {
 	programIsActive: boolean;
 }
 
+export interface ListApplicationsOptions {
+	limit: number;
+	offset: number;
+	status?: ApplicationStatus;
+	dateFrom?: Date;
+	dateTo?: Date;
+	search?: string;
+}
+
+export interface ListApplicationsResult {
+	items: ApplicationListItem[];
+	total: number;
+}
+
 export interface ApplicationsRepository {
 	listPrograms(): Promise<ProgramListItem[]>;
-	listApplicationsByProgramId(programId: number): Promise<ApplicationListItem[]>;
+	listApplicationsByProgramId(
+		programId: number,
+		options: ListApplicationsOptions
+	): Promise<ListApplicationsResult>;
 	getApplicationById(applicationId: number): Promise<ApplicationDetailItem | null>;
 	updateApplicationStatus(input: {
 		applicationId: number;
