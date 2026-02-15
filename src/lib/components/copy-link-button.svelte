@@ -1,6 +1,9 @@
 <script lang="ts">
+	import { Button } from '$lib/components/ui/button/index.js';
 	import { copyApplicationLink } from '$lib/shared/copy-application-link.js';
-	import { Button } from './ui/button';
+
+	const COPIED_FEEDBACK_MS = 2000;
+	const ERROR_FEEDBACK_MS = 3000;
 
 	interface Props {
 		applicationId: number;
@@ -10,16 +13,38 @@
 	let { applicationId, class: className = '' }: Props = $props();
 
 	let copied = $state(false);
+	let copyError = $state(false);
+	let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+	function scheduleReset(ms: number, setter: () => void) {
+		if (timeoutId) clearTimeout(timeoutId);
+		timeoutId = setTimeout(() => {
+			setter();
+			timeoutId = undefined;
+		}, ms);
+	}
+
+	$effect(() => () => {
+		if (timeoutId) clearTimeout(timeoutId);
+	});
 
 	async function handleClick() {
-		await copyApplicationLink(applicationId);
-		copied = true;
-		setTimeout(() => {
-			copied = false;
-		}, 2000);
+		copyError = false;
+		try {
+			await copyApplicationLink(applicationId);
+			copied = true;
+			scheduleReset(COPIED_FEEDBACK_MS, () => {
+				copied = false;
+			});
+		} catch {
+			copyError = true;
+			scheduleReset(ERROR_FEEDBACK_MS, () => {
+				copyError = false;
+			});
+		}
 	}
 </script>
 
 <Button onclick={handleClick} variant="link" size="sm" class={className}>
-	{copied ? 'Copied!' : 'Copy link'}
+	{copied ? 'Copied!' : copyError ? 'Failed to copy' : 'Copy link'}
 </Button>

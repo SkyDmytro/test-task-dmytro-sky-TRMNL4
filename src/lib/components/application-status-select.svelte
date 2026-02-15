@@ -5,14 +5,15 @@
 		SelectItem,
 		SelectTrigger
 	} from '$lib/components/ui/select/index.js';
-	import { applicationStatuses } from '$lib/shared/application.js';
+	import { applicationStatuses, type ApplicationStatus } from '$lib/shared/application.js';
 
 	interface Props {
-		value: string;
-		onValueChange: (value: string) => void;
+		value: ApplicationStatus;
+		onValueChange: (value: ApplicationStatus) => void;
 		class?: string;
 		disabled?: boolean;
 		triggerClass?: string;
+		ariaLabel?: string;
 	}
 
 	let {
@@ -20,13 +21,19 @@
 		onValueChange,
 		class: className,
 		disabled = false,
-		triggerClass = ''
+		triggerClass = '',
+		ariaLabel = 'Application status'
 	}: Props = $props();
 </script>
 
 <div class={className}>
-	<Select type="single" {value} {onValueChange} {disabled}>
-		<SelectTrigger class={triggerClass || 'h-9 w-[140px]'} aria-label="Application status">
+	<Select
+		type="single"
+		{value}
+		onValueChange={(v) => onValueChange(v as ApplicationStatus)}
+		{disabled}
+	>
+		<SelectTrigger class={triggerClass || 'h-9 w-[140px]'} aria-label={ariaLabel}>
 			{value}
 		</SelectTrigger>
 		<SelectContent>
