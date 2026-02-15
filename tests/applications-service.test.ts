@@ -1,11 +1,14 @@
 import { it, expect } from 'vitest';
-import type { ApplicationStatus } from '$lib/db/types.js';
 import type { ApplicationsRepository } from '$lib/server/applications-repository.js';
 import {
 	loadApplicationsOverview,
 	pickSelectedProgramId
 } from '$lib/server/applications-service.js';
-import { applicationStatuses, isApplicationStatus } from '$lib/shared/application.js';
+import {
+	applicationStatuses,
+	isApplicationStatus,
+	type ApplicationStatus
+} from '$lib/shared/application.js';
 import { parseNumericId } from '$lib/shared/parse.js';
 
 it('applicationStatuses contains all allowed statuses', () => {

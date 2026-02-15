@@ -1,47 +1,8 @@
-# sv
+# Application review UI
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+SvelteKit app for listing and reviewing applications (filter by program, view detail, update status). Uses MySQL and Kysely.
 
-## Creating a project
-
-If you're seeing this, you've probably already done this step. Congrats!
-
-```sh
-# create a new project
-npx sv create my-app
-```
-
-To recreate this project with the same configuration:
-
-```sh
-# recreate this project
-pnpm dlx sv create --template minimal --types ts --install pnpm .
-```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```sh
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
-
-## How to run with database
+## 1. How to run
 
 Create `.env` in the project root:
 
@@ -50,11 +11,11 @@ DB_ROOT_PASSWORD=rootpassword
 DB_NAME=sveltekit_db
 DB_USER=sveltekit_user
 DB_PASSWORD=secretpassword
+DB_HOST=localhost
+DB_PORT=3307
 ```
 
-### 1. Full app + DB in Docker (run migrations and seed yourself)
-
-Run the whole stack in Docker and apply migrations and seed manually:
+### Option A: Full app + DB in Docker
 
 ```sh
 docker compose up -d --build
@@ -62,29 +23,15 @@ docker compose run --rm app pnpm run migrate
 docker compose run --rm app pnpm run seed
 ```
 
-Open the app at [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000).
 
-**Why run migrations and seed yourself:** You control when schema and data change. In production you avoid applying migrations on every deploy, reduce risk of failed starts, and can run migrations in a separate step (e.g. CI or release pipeline). Seed stays a deliberate action for dev/staging, not something that runs automatically in production.
-
-### 2. Only DB in Docker + local SvelteKit
-
-Use MySQL in Docker and run the app locally with hot reload:
+### Option B: Only DB in Docker, app locally
 
 ```sh
 docker compose up -d mysql
 ```
 
-Ensure `.env` has connection for the host (MySQL is on port **3307**):
-
-```env
-DB_HOST=localhost
-DB_PORT=3307
-DB_NAME=sveltekit_db
-DB_USER=sveltekit_user
-DB_PASSWORD=secretpassword
-```
-
-Then:
+Ensure `.env` has `DB_HOST=localhost` and `DB_PORT=3307`, then:
 
 ```sh
 pnpm install
@@ -93,12 +40,59 @@ pnpm run seed
 pnpm run dev
 ```
 
-App: [http://localhost:5173](http://localhost:5173).
+Open [http://localhost:5173](http://localhost:5173).
 
 Useful commands:
 
 ```sh
-docker compose logs -f           # follow logs
-docker compose down              # stop containers
-docker compose down -v           # stop and remove volumes (deletes DB data)
+docker compose logs -f
+docker compose down
+docker compose down -v
 ```
+
+Routes: list + filter `/applications?programId=1`, detail `/applications/[id]`.
+
+---
+
+## 2. Architectural decisions
+
+### Svelte / frontend
+
+- **SvelteKit** with file-based routing. Pages use `+page.svelte` and `+page.server.ts`; load runs on the server, form actions handle mutations.
+- **Svelte 5** runes: `$props()` for page data and form state, `$derived()` for computed values, `$state()` only where needed (e.g. form refs).
+- **Forms**: native `<form>` with `action="?/updateStatus"`; `submitStatusForm()` in `$lib/shared/status-form.ts` sets the status input and calls `requestSubmit()` so the form posts to the server. No client-side fetch for status updates.
+- **UI**: Tailwind, bits-ui (dropdown, select, table). Shared pieces: `ApplicationStatusSelect`, `CopyLinkButton`, `formatDate` / `formatProgramLabel` in `$lib/shared/format.ts`.
+- **Navigation**: program filter uses `goto('/applications?programId=...')`; list and detail use normal links and redirects after actions.
+
+### Server
+
+- **Load and actions** live in `+page.server.ts`. They stay thin: parse params/formData, call service/repo, then return data or redirect/fail.
+- **Single repo accessor**: `getApplicationsRepo()` in `repo.server.ts` returns a shared `ApplicationsRepository` instance (backed by Kysely). Used by all load/action code.
+- **Business logic** in `applications-service.ts`: `updateApplicationStatus`, `pickSelectedProgramId`, `getApplicationsListRedirectUrl`, `loadApplicationsOverview`. All take the repo (and other inputs) as arguments; no direct DB or env access.
+- **Result handling**: `update-status-handler.ts` maps `UpdateStatusResult` to SvelteKit `fail(400/404, { message })` so the same service can be used from list and detail pages.
+
+### Database
+
+- **Kysely** with **MySQL** (`mysql2` driver). Types in `$lib/db/types.ts` define the schema; `ApplicationStatus` is shared from `$lib/shared/application.ts`.
+- **Config**: `createDbConfig(env)` in `db/config.ts` reads `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`; required keys enforced at startup.
+- **Connection**: `getDb()` in `db.server.ts` returns a singleton `Kysely<Database>` so the app uses one pool. Only used on the server (`db.server.ts` and repo are server-only).
+
+### Server / repository
+
+- **Interface** `ApplicationsRepository` in `applications-repository.ts`: `listPrograms`, `listApplicationsByProgramId`, `getApplicationById`, `updateApplicationStatus`. All data types (e.g. `ApplicationListItem`, `ApplicationDetailItem`) live next to the interface.
+- **Implementation**: `createKyselyApplicationsRepository(getDb())` in `kysely-applications-repository.server.ts`; wired in `repo.server.ts`. Repo is the only layer that talks to Kysely; services and routes depend only on the interface.
+
+### Other
+
+- **Shared validation and parsing**: `isApplicationStatus()` and `applicationStatuses` in `application.ts`; `parseNumericId()` for IDs from URL/form. Used on server and, where needed, for types.
+- **URL state**: `programId` is the only list filter, kept in the query string and used in load and redirects.
+
+---
+
+## 3. What can be improved
+
+- **Pagination and search** for large numbers of applications.
+- **Optimistic UX**: e.g. `enhance()` on forms and inline toasts so status updates feel instant while still using server actions.
+- **Authorization and audit**: who can change status, and logging of status changes.
+- **Error and loading UX**: clearer messages and loading states (e.g. skeleton or disabled controls during submit).
+- **Tests**: expand coverage for service and repo (e.g. edge cases for `pickSelectedProgramId`, redirect URL logic).
