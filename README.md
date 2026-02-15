@@ -4,15 +4,10 @@ SvelteKit app for listing and reviewing applications (filter by program, view de
 
 ## 1. How to run
 
-Create `.env` in the project root:
+Copy `.env.example` to `.env` and set values (required: `DB_USER`, `DB_PASSWORD`).
 
-```env
-DB_ROOT_PASSWORD=rootpassword
-DB_NAME=sveltekit_db
-DB_USER=sveltekit_user
-DB_PASSWORD=secretpassword
-DB_HOST=localhost
-DB_PORT=3307
+```sh
+cp .env.example .env
 ```
 
 ### Option A: Full app + DB in Docker
@@ -23,7 +18,7 @@ docker compose run --rm app pnpm run migrate
 docker compose run --rm app pnpm run seed
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). The app sets `ORIGIN=http://localhost:3000` so update-status form submissions pass SvelteKit’s CSRF check.
 
 ### Option B: Only DB in Docker, app locally
 
@@ -42,15 +37,9 @@ pnpm run dev
 
 Open [http://localhost:5173](http://localhost:5173).
 
-Useful commands:
+Run tests (with DB not required for unit tests): `pnpm test`.
 
-```sh
-docker compose logs -f
-docker compose down
-docker compose down -v
-```
-
-Routes: list + filter `/applications?programId=1`, detail `/applications/[id]`.
+Routes: list + filters `/applications?programId=1&page=1&status=...&q=...`, detail `/applications/[id]`.
 
 ---
 
@@ -62,7 +51,7 @@ Routes: list + filter `/applications?programId=1`, detail `/applications/[id]`.
 - **Svelte 5** runes: `$props()` for page data and form state, `$derived()` for computed values, `$state()` only where needed (e.g. form refs).
 - **Forms**: native `<form>` with `action="?/updateStatus"`; `submitStatusForm()` in `$lib/shared/status-form.ts` sets the status input and calls `requestSubmit()` so the form posts to the server. No client-side fetch for status updates.
 - **UI**: Tailwind, bits-ui (dropdown, select, table). Shared pieces: `ApplicationStatusSelect`, `CopyLinkButton`, `formatDate` / `formatProgramLabel` in `$lib/shared/format.ts`.
-- **Navigation**: program filter uses `goto('/applications?programId=...')`; list and detail use normal links and redirects after actions.
+- **Navigation**: program filter uses `goto()` with query built from `applications-list-query.js`; list and detail use normal links and redirects after actions. List state (program, page, status, date range, search) lives in the URL.
 
 ### Server
 
@@ -85,14 +74,13 @@ Routes: list + filter `/applications?programId=1`, detail `/applications/[id]`.
 ### Other
 
 - **Shared validation and parsing**: `isApplicationStatus()` and `applicationStatuses` in `application.ts`; `parseNumericId()` for IDs from URL/form. Used on server and, where needed, for types.
-- **URL state**: `programId` is the only list filter, kept in the query string and used in load and redirects.
+- **URL state**: list filters (programId, page, status, dateFrom, dateTo, q for search) are in the query string. `applications-list-query.ts` provides `extractApplicationsListParamsRaw`, `normalizeListParams`, and helpers to build list URLs; the service uses them for load and redirects.
 
 ---
 
 ## 3. What can be improved
 
-- **Pagination and search** for large numbers of applications.
 - **Optimistic UX**: e.g. `enhance()` on forms and inline toasts so status updates feel instant while still using server actions.
 - **Authorization and audit**: who can change status, and logging of status changes.
 - **Error and loading UX**: clearer messages and loading states (e.g. skeleton or disabled controls during submit).
-- **Tests**: expand coverage for service and repo (e.g. edge cases for `pickSelectedProgramId`, redirect URL logic).
+- **Tests**: expand coverage for service, repo, and list-query (e.g. edge cases for `pickSelectedProgramId`, redirect URL logic, `normalizeListParams`).
