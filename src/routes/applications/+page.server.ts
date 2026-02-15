@@ -1,5 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types.js';
+import { extractApplicationsListParamsRaw } from '$lib/applications-list-query.js';
 import { getApplicationsRepo } from '$lib/server/repo.server.js';
 import {
 	getApplicationsListRedirectUrl,
@@ -10,9 +11,10 @@ import { handleUpdateStatusResult } from '$lib/server/update-status-handler.js';
 import { parseNumericId } from '$lib/shared/parse.js';
 
 export const load: PageServerLoad = async ({ url }) => {
-	return loadApplicationsOverview(getApplicationsRepo(), {
-		programIdParam: url.searchParams.get('programId')
-	});
+	return loadApplicationsOverview(
+		getApplicationsRepo(),
+		extractApplicationsListParamsRaw(url.searchParams)
+	);
 };
 
 export const actions: Actions = {
@@ -36,7 +38,8 @@ export const actions: Actions = {
 		const next = await getApplicationsListRedirectUrl(repo, {
 			programIdFromForm,
 			programIdParamFromForm: typeof programIdRaw === 'string' ? programIdRaw : null,
-			programIdParamFromUrl: url.searchParams.get('programId')
+			programIdParamFromUrl: url.searchParams.get('programId'),
+			raw: extractApplicationsListParamsRaw(url.searchParams)
 		});
 		throw redirect(303, next);
 	}
