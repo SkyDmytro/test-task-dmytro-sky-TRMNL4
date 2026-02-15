@@ -21,14 +21,31 @@
 		TableHeader,
 		TableRow
 	} from '$lib/components/ui/table/index.js';
-	import { copyApplicationLink } from '$lib/shared/copy-application-link.js';
-	import { formatDate } from '$lib/shared/format.js';
+	import CopyLinkButton from '$lib/components/copy-link-button.svelte';
+	import { formatDate, formatProgramLabel } from '$lib/shared/format.js';
+	import { submitStatusForm } from '$lib/shared/status-form.js';
 	import MoreVertical from '@lucide/svelte/icons/more-vertical';
+	import type { ApplicationListItem, ProgramListItem } from '$lib/server/applications-repository';
 
-	let { data, form } = $props();
+	const APPLICATIONS_TABLE_COLUMNS = 6;
+
+	let {
+		data,
+		form
+	}: {
+		data: {
+			programs: ProgramListItem[];
+			selectedProgramId: number | null;
+			applications: ApplicationListItem[];
+		};
+		form: { message?: string } | undefined;
+	} = $props();
 
 	let programs = $derived(data.programs);
 	let selectedProgramId = $derived(data.selectedProgramId);
+	let selectedProgram = $derived(
+		selectedProgramId != null ? (programs.find((p) => p.id === selectedProgramId) ?? null) : null
+	);
 	let applications = $derived(data.applications);
 
 	let statusFormRefs = $state<Record<number, HTMLFormElement>>({});
@@ -38,14 +55,7 @@
 	}
 
 	function handleStatusChange(applicationId: number, newValue: string) {
-		const formEl = statusFormRefs[applicationId];
-		if (formEl) {
-			const statusInput = formEl.elements.namedItem('status') as HTMLInputElement;
-			if (statusInput) {
-				statusInput.value = newValue;
-				formEl.requestSubmit();
-			}
-		}
+		submitStatusForm(statusFormRefs[applicationId], newValue);
 	}
 </script>
 
@@ -73,19 +83,11 @@
 					onValueChange={handleProgramChange}
 				>
 					<SelectTrigger class="h-10 w-full sm:w-[320px]" aria-label="Select program">
-						{selectedProgramId != null
-							? (programs.find((p) => p.id === selectedProgramId)?.name ?? '') +
-								(programs.find((p) => p.id === selectedProgramId)?.isActive === false
-									? ' (inactive)'
-									: '')
-							: 'Select program'}
+						{formatProgramLabel(selectedProgram) || 'Select program'}
 					</SelectTrigger>
 					<SelectContent>
 						{#each programs as program (program.id)}
-							<SelectItem
-								value={String(program.id)}
-								label={program.name + (program.isActive ? '' : ' (inactive)')}
-							/>
+							<SelectItem value={String(program.id)} label={formatProgramLabel(program)} />
 						{/each}
 					</SelectContent>
 				</Select>
@@ -108,13 +110,13 @@
 			<TableBody>
 				{#if !selectedProgramId}
 					<TableRow>
-						<TableCell class="px-4 py-6 text-muted-foreground" colspan={6}
+						<TableCell class="px-4 py-6 text-muted-foreground" colspan={APPLICATIONS_TABLE_COLUMNS}
 							>No programs found.</TableCell
 						>
 					</TableRow>
 				{:else if applications.length === 0}
 					<TableRow>
-						<TableCell class="px-4 py-6 text-muted-foreground" colspan={6}
+						<TableCell class="px-4 py-6 text-muted-foreground" colspan={APPLICATIONS_TABLE_COLUMNS}
 							>No applications for this program.</TableCell
 						>
 					</TableRow>
@@ -141,6 +143,7 @@
 									<ApplicationStatusSelect
 										value={application.status}
 										onValueChange={(v: string) => handleStatusChange(application.id, v)}
+										ariaLabel={`Application status for ${application.startupName}`}
 									/>
 								</form>
 							</TableCell>
@@ -156,8 +159,11 @@
 										<DropdownMenuItem onSelect={() => goto(`/applications/${application.id}`)}>
 											View details
 										</DropdownMenuItem>
-										<DropdownMenuItem onSelect={() => copyApplicationLink(application.id)}>
-											Copy link
+										<DropdownMenuItem>
+											<CopyLinkButton
+												applicationId={application.id}
+												class="h-auto w-full justify-start font-normal"
+											/>
 										</DropdownMenuItem>
 									</DropdownMenuContent>
 								</DropdownMenu>

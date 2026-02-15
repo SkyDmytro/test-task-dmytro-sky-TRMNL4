@@ -1,21 +1,21 @@
 <script lang="ts">
 	import ApplicationStatusSelect from '$lib/components/application-status-select.svelte';
 	import CopyLinkButton from '$lib/components/copy-link-button.svelte';
-	import { formatDate } from '$lib/shared/format.js';
+	import { formatDate, formatProgramLabel } from '$lib/shared/format.js';
+	import { submitStatusForm } from '$lib/shared/status-form.js';
+	import type { ApplicationDetailItem } from '$lib/server/applications-repository.js';
 
-	let { data, form } = $props();
+	let {
+		data,
+		form
+	}: { data: { application: ApplicationDetailItem }; form: { message?: string } | undefined } =
+		$props();
 
 	let application = $derived(data.application);
 	let statusFormRef = $state<HTMLFormElement | undefined>(undefined);
 
 	function handleStatusChange(newValue: string) {
-		if (statusFormRef) {
-			const statusInput = statusFormRef.elements.namedItem('status') as HTMLInputElement;
-			if (statusInput) {
-				statusInput.value = newValue;
-				statusFormRef.requestSubmit();
-			}
-		}
+		submitStatusForm(statusFormRef, newValue);
 	}
 </script>
 
@@ -24,7 +24,10 @@
 		<div class="space-y-1">
 			<h1 class="text-2xl font-semibold tracking-tight">{application.startupName}</h1>
 			<p class="text-sm text-muted-foreground">
-				Program: {application.programName}{application.programIsActive ? '' : ' (inactive)'}
+				Program: {formatProgramLabel({
+					name: application.programName,
+					isActive: application.programIsActive
+				})}
 			</p>
 		</div>
 		<div class="flex items-center gap-3">
