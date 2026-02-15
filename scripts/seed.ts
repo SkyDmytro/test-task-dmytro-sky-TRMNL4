@@ -1,14 +1,7 @@
 import 'dotenv/config';
-import { createPool } from 'mysql2';
-import { Kysely, MysqlDialect } from 'kysely';
-import type { Database } from '../src/lib/db/types.js';
-import { createDbConfig } from '../src/lib/db/config.js';
+import { getDb } from './db.js';
 
-const db = new Kysely<Database>({
-	dialect: new MysqlDialect({
-		pool: createPool(createDbConfig(process.env))
-	})
-});
+const db = getDb();
 
 async function seed() {
 	await db.transaction().execute(async (trx) => {
@@ -26,8 +19,12 @@ async function seed() {
 
 		const programs = await trx.selectFrom('program').select(['id', 'name']).execute();
 		const idByName = new Map(programs.map((p) => [p.name, p.id]));
-		const acceleratorId = idByName.get('Accelerator 2025')!;
-		const seedStageId = idByName.get('Seed Stage Program')!;
+		const acceleratorId = idByName.get('Accelerator 2025');
+		const seedStageId = idByName.get('Seed Stage Program');
+		if (acceleratorId == null)
+			throw new Error("Seed data error: program 'Accelerator 2025' not found after insert");
+		if (seedStageId == null)
+			throw new Error("Seed data error: program 'Seed Stage Program' not found after insert");
 
 		await trx
 			.insertInto('application')

@@ -2,19 +2,13 @@ import 'dotenv/config';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { promises as fs } from 'fs';
-import { createPool } from 'mysql2';
-import { Kysely, Migrator, MysqlDialect, FileMigrationProvider } from 'kysely';
-import type { Database } from '../src/lib/db/types.js';
-import { createDbConfig } from '../src/lib/db/config.js';
+import { Migrator, FileMigrationProvider } from 'kysely';
+import { getDb } from './db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 async function migrateToLatest() {
-	const db = new Kysely<Database>({
-		dialect: new MysqlDialect({
-			pool: createPool(createDbConfig(process.env))
-		})
-	});
+	const db = getDb();
 
 	const migrator = new Migrator({
 		db,
@@ -45,4 +39,7 @@ async function migrateToLatest() {
 	await db.destroy();
 }
 
-migrateToLatest();
+migrateToLatest().catch((err) => {
+	console.error(err);
+	process.exit(1);
+});

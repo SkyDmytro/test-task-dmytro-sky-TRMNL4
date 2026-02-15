@@ -11,4 +11,7 @@ function createDb(): Kysely<Database> {
 	return new Kysely<Database>({ dialect: new MysqlDialect({ pool }) });
 }
 
-export const db = globalForDb.__db ?? (globalForDb.__db = createDb());
+export function getDb(): Kysely<Database> {
+	if (!globalForDb.__db) globalForDb.__db = createDb();
+	return globalForDb.__db;
+}

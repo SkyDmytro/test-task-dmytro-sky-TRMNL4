@@ -1,8 +1,7 @@
 import type { Generated } from 'kysely';
+import type { ApplicationStatus } from '$lib/shared/application.js';
 
 export type MysqlBoolean = 0 | 1;
-
-export type ApplicationStatus = 'new' | 'reviewed' | 'accepted' | 'rejected';
 
 export interface Database {
 	program: {
