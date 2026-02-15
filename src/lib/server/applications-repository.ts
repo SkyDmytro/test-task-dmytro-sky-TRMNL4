@@ -1,4 +1,4 @@
-import type { ApplicationStatus } from '$lib/db/types.js';
+import type { ApplicationStatus } from '$lib/shared/application.js';
 
 export interface ProgramListItem {
 	id: number;
